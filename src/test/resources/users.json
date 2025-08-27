@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Alice",
+    "initialJob": "QA Engineer",
+    "updatedJob": "Senior QA Engineer"
+  },
+  {
+    "name": "Bob",
+    "initialJob": "Developer",
+    "updatedJob": "Team Lead"
+  },
+  {
+    "name": "Charlie",
+    "initialJob": "Tester",
+    "updatedJob": "Senior Tester"
+  }
+]

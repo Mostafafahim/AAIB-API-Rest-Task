@@ -1,11 +1,17 @@
 package com.mostafa.reqres;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.qameta.allure.*;
 import io.restassured.response.Response;
 import org.testng.SkipException;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static io.restassured.RestAssured.given;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
 import static org.hamcrest.Matchers.*;
 
 @Epic("ReqRes")
@@ -13,22 +19,35 @@ import static org.hamcrest.Matchers.*;
 @Severity(SeverityLevel.CRITICAL)
 public class UserWorkflowTest extends BaseTest {
 
-    private static String createdUserId;
-    private static String name = "Mostafa Fahim";
-    private static String initialJob = "QA Engineer";
-    private static String updatedJob = "Senior QA Engineer";
+    private String createdUserId;
+    private String name;
+    private String updatedJob;
 
-    @Test(priority = 1, description = "Create user and capture id")
+    @DataProvider(name = "userData")
+    public Object[][] userDataProvider() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        List<User> users = mapper.readValue(new File("src/test/resources/users.json"), new TypeReference<List<User>>() {});
+        Object[][] data = new Object[users.size()][1];
+        for (int i = 0; i < users.size(); i++) {
+            data[i][0] = users.get(i);
+        }
+        return data;
+    }
+
+    @Test(priority = 1, description = "Create user and capture id", dataProvider = "userData")
     @Story("Create User")
-    public void testCreateUser() {
+    public void testCreateUser(User user) {
+        this.name = user.getName();
+        this.updatedJob = user.getUpdatedJob();
+
         Response res = baseRequest()
-                .body("{\"name\":\"" + name + "\", \"job\":\"" + initialJob + "\"}")
+                .body("{\"name\":\"" + user.getName() + "\", \"job\":\"" + user.getInitialJob() + "\"}")
                 .when()
                 .post("/users")
                 .then()
                 .statusCode(201)
-                .body("name", equalTo(name))
-                .body("job", equalTo(initialJob))
+                .body("name", equalTo(user.getName()))
+                .body("job", equalTo(user.getInitialJob()))
                 .body("id", not(isEmptyOrNullString()))
                 .extract().response();
 
@@ -63,16 +82,12 @@ public class UserWorkflowTest extends BaseTest {
         Allure.addAttachment("GET /users/{id} response", res.asPrettyString());
 
         if (status == 200) {
-            // If ever ReqRes returns 200 with a body, verify job (unlikely for this mock API)
             res.then().body("data.job", equalTo(updatedJob));
         } else if (status == 404) {
-            // Expected for ReqRes mock (no persistence)
             throw new SkipException("ReqRes does not persist created users. GET returned 404, skipping update verification.");
-        }
-        else {
+        } else {
             throw new AssertionError("Unexpected GET status: " + status + ". Body: " + res.asString());
-
-    }
+        }
     }
 
     @Test(priority = 4, dependsOnMethods = "testUpdateUser", description = "Delete user")
